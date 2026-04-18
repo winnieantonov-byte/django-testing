@@ -34,7 +34,10 @@ def test_not_unique_slug(author_client, note, form_data):
     url = reverse('notes:add')
     form_data['slug'] = note.slug
     response = author_client.post(url, data=form_data)
-    assertFormError(response, 'form', 'slug', errors=(note.slug + WARNING))
+    url = reverse('notes:add')
+    form_data['slug'] = note.slug
+    response = author_client.post(url, data=form_data)
+    assertFormError(response.context['form'], 'slug', note.slug + WARNING)
     assert Note.objects.count() == 1
 
 
