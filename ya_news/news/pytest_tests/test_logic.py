@@ -40,7 +40,6 @@ class TestCommentCreation(TestCase):
     def test_user_cant_use_bad_words(self):
         bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
         response = self.auth_client.post(self.url, data=bad_words_data)
-        # Передаем строго по порядку: response, имя_формы, имя_поля, текст_ошибки
         self.assertFormError(
             response,
             'form',
