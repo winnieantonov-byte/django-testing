@@ -37,10 +37,7 @@ class TestRoutes(TestCase):
 
     def test_logout_availability(self):
         url = reverse('users:logout')
-        # В Django 5.0+ logout работает только через POST
         response = self.client.post(url)
-        # После POST обычно происходит редирект (302), либо 200, 
-        # в зависимости от настроек проекта.
         self.assertIn(response.status_code, (HTTPStatus.OK, HTTPStatus.FOUND))
 
     def test_availability_for_comment_edit_and_delete(self):
