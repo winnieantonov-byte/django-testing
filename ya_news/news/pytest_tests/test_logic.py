@@ -38,11 +38,11 @@ class TestCommentCreation(TestCase):
         self.assertEqual(comment.author, self.user)
 
     def test_user_cant_use_bad_words(self):
-        bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
+        bad_words_data = {'text': f'Текст, {BAD_WORDS[0]}, текст'}
         response = self.auth_client.post(self.url, data=bad_words_data)
+        form = response.context['form']
         self.assertFormError(
-            response,
-            'form',
+            form,
             'text',
             WARNING
         )
