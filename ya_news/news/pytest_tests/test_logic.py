@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from news.forms import BAD_WORDS, WARNING
@@ -18,7 +18,7 @@ class TestCommentCreation(TestCase):
         cls.news = News.objects.create(title='Заголовок', text='Текст')
         cls.url = reverse('news:detail', args=(cls.news.id,))
         cls.user = User.objects.create(username='Мимо Крокодил')
-        cls.auth_client = Client()
+        cls.auth_client = cls.client_class()
         cls.auth_client.force_login(cls.user)
         cls.form_data = {'text': cls.COMMENT_TEXT}
 
@@ -42,8 +42,8 @@ class TestCommentCreation(TestCase):
         response = self.auth_client.post(self.url, data=bad_words_data)
         self.assertFormError(
             response,
-            form='form',
-            field='text',
+            'form',
+            'text',
             errors=WARNING
         )
         comments_count = Comment.objects.count()
@@ -60,10 +60,10 @@ class TestCommentEditDelete(TestCase):
         news_url = reverse('news:detail', args=(cls.news.id,))
         cls.url_to_comments = news_url + '#comments'
         cls.author = User.objects.create(username='Автор комментария')
-        cls.author_client = Client()
+        cls.author_client = cls.client_class()
         cls.author_client.force_login(cls.author)
         cls.reader = User.objects.create(username='Читатель')
-        cls.reader_client = Client()
+        cls.reader_client = cls.client_class()
         cls.reader_client.force_login(cls.reader)
         cls.comment = Comment.objects.create(
             news=cls.news,
