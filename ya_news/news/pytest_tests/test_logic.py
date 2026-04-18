@@ -41,7 +41,7 @@ class TestCommentCreation(TestCase):
         bad_words_data = {'text': f'Текст с {BAD_WORDS[0]}'}
         response = self.auth_client.post(self.url, data=bad_words_data)
         form = response.context['form']
-        self.assertIn(WARNING, form.errors['text'])
+        self.assertFormError(form, 'text', WARNING)
         self.assertEqual(Comment.objects.count(), 0)
 
 
