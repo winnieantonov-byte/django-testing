@@ -40,10 +40,9 @@ class TestCommentCreation(TestCase):
     def test_user_cant_use_bad_words(self):
         bad_words_data = {'text': f'Текст с {BAD_WORDS[0]}'}
         response = self.auth_client.post(self.url, data=bad_words_data)
-        errors = response.context['form'].errors.get('text')
-        self.assertIsNotNone(errors)
-        self.assertIn(WARNING, errors)
-        self.assertEqual(Comment.objects.count(), 0)
+        self.assertContains(response, WARNING)
+        comments_count = Comment.objects.count()
+        self.assertEqual(comments_count, 0)
 
 
 class TestCommentEditDelete(TestCase):
