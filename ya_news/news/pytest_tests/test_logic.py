@@ -44,7 +44,7 @@ class TestCommentCreation(TestCase):
             response,
             'form',
             'text',
-            errors=WARNING
+            WARNING
         )
         comments_count = Comment.objects.count()
         self.assertEqual(comments_count, 0)
