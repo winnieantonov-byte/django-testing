@@ -38,12 +38,12 @@ class TestCommentCreation(TestCase):
         self.assertEqual(comment.author, self.user)
 
     def test_user_cant_use_bad_words(self):
-        # Формируем данные с запрещенным словом
-        bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
+        bad_words_data = {'text': f'Текст с {BAD_WORDS[0]}'}
         response = self.auth_client.post(self.url, data=bad_words_data)
-        self.assertContains(response, WARNING)
-        comments_count = Comment.objects.count()
-        self.assertEqual(comments_count, 0)
+        errors = response.context['form'].errors.get('text')
+        self.assertIsNotNone(errors)
+        self.assertIn(WARNING, errors)
+        self.assertEqual(Comment.objects.count(), 0)
 
 
 class TestCommentEditDelete(TestCase):
