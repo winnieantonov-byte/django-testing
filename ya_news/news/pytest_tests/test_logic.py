@@ -14,14 +14,34 @@ def author(db, django_user_model):
 
 
 @pytest.fixture
+def reader(db, django_user_model):
+    return django_user_model.objects.create(username='Читатель')
+
+
+@pytest.fixture
 def author_client(author, client):
     client.force_login(author)
     return client
 
 
 @pytest.fixture
+def reader_client(reader, client):
+    client.force_login(reader)
+    return client
+
+
+@pytest.fixture
 def news(db):
     return News.objects.create(title='Заголовок', text='Текст')
+
+
+@pytest.fixture
+def comment(author, news):
+    return Comment.objects.create(
+        news=news,
+        author=author,
+        text='Текст комментария'
+    )
 
 
 @pytest.fixture
@@ -34,10 +54,20 @@ def url_to_comments(url_detail):
     return url_detail + '#comments'
 
 
+@pytest.fixture
+def edit_url(comment):
+    return reverse('news:edit', args=(comment.id,))
+
+
+@pytest.fixture
+def delete_url(comment):
+    return reverse('news:delete', args=(comment.id,))
+
+
 @pytest.mark.django_db
 def test_anonymous_user_cant_create_comment(client, url_detail):
     form_data = {'text': 'Текст комментария'}
-    client.post('news:detail', data=form_data)
+    client.post(url_detail, data=form_data)
     assert Comment.objects.count() == 0
 
 
@@ -60,12 +90,7 @@ def test_user_can_create_comment(
 def test_user_cant_use_bad_words(author_client, url_detail):
     bad_words_data = {'text': f'Текст с {BAD_WORDS[0]}'}
     response = author_client.post(url_detail, data=bad_words_data)
-    assertFormError(
-        response,
-        'form',
-        'text',
-        errors=WARNING
-    )
+    assertFormError(response, 'form', 'text', WARNING)
     assert Comment.objects.count() == 0
 
 
