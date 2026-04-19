@@ -77,7 +77,9 @@ def test_anonymous_user_cant_create_comment(client, url_detail):
 
 
 @pytest.mark.django_db
-def test_user_can_create_comment(auth_client, url_detail, url_to_comments, news, reader):
+def test_user_can_create_comment(
+    auth_client, url_detail, url_to_comments, news, reader
+):
     text = 'Текст комментария'
     form_data = {'text': text}
     response = auth_client.post(url_detail, data=form_data)
@@ -115,7 +117,9 @@ def test_user_cant_delete_comment_of_another_user(reader_client, delete_url):
 
 
 @pytest.mark.django_db
-def test_author_can_edit_comment(author_client, edit_url, url_to_comments, comment):
+def test_author_can_edit_comment(
+    author_client, edit_url, url_to_comments, comment
+):
     new_text = 'Обновлённый комментарий'
     form_data = {'text': new_text}
     response = author_client.post(edit_url, data=form_data)
@@ -126,7 +130,9 @@ def test_author_can_edit_comment(author_client, edit_url, url_to_comments, comme
 
 
 @pytest.mark.django_db
-def test_user_cant_edit_comment_of_another_user(reader_client, edit_url, comment):
+def test_user_cant_edit_comment_of_another_user(
+    reader_client, edit_url, comment
+):
     old_text = comment.text
     new_text = 'Обновлённый комментарий'
     form_data = {'text': new_text}
