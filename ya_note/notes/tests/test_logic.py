@@ -52,12 +52,8 @@ class TestNoteCreation(TestCase):
         )
         self.form_data['slug'] = note.slug
         response = self.client.post(self.url_add, data=self.form_data)
-        self.assertFormError(
-            response,
-            'form',
-            'slug',
-            note.slug + WARNING
-        )
+        form = response.context['form']
+        self.assertIn(note.slug + WARNING, form.errors['slug'])
         self.assertEqual(Note.objects.count(), 1)
 
     def test_empty_slug(self):
