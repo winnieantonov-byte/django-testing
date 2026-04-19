@@ -12,22 +12,22 @@ class BaseTest(TestCase):
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор')
         cls.not_author = User.objects.create(username='Не автор')
-        
+
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
-        
+
         cls.not_author_client = Client()
         cls.not_author_client.force_login(cls.not_author)
-        
+
         cls.note = Note.objects.create(
             title='Заголовок',
             text='Текст заметки',
             slug='note-slug',
             author=cls.author,
         )
-        
+
         cls.slug_for_args = (cls.note.slug,)
-        
+
         cls.form_data = {
             'title': 'Новый заголовок',
             'text': 'Новый текст',
