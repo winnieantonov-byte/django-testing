@@ -1,81 +1,90 @@
 from datetime import datetime, timedelta
 
+import pytest
 from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from news.forms import CommentForm
 from news.models import Comment, News
 
-User = get_user_model()
+
+@pytest.fixture
+def home_url():
+    return reverse('news:home')
 
 
-class TestHomePage(TestCase):
-    HOME_URL = reverse('news:home')
-
-    @classmethod
-    def setUpTestData(cls):
-        today = datetime.today()
-        News.objects.bulk_create(
-            News(
-                title=f'Новость {index}',
-                text='Просто текст.',
-                date=today - timedelta(days=index)
-            )
-            for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
+@pytest.fixture
+def news_list(db):
+    today = datetime.today()
+    News.objects.bulk_create(
+        News(
+            title=f'Новость {index}',
+            text='Просто текст.',
+            date=today - timedelta(days=index)
         )
-
-    def test_news_count(self):
-        response = self.client.get(self.HOME_URL)
-        object_list = response.context['object_list']
-        news_count = object_list.count()
-        self.assertEqual(news_count, settings.NEWS_COUNT_ON_HOME_PAGE)
-
-    def test_news_order(self):
-        response = self.client.get(self.HOME_URL)
-        object_list = response.context['object_list']
-        all_dates = [news.date for news in object_list]
-        sorted_dates = sorted(all_dates, reverse=True)
-        self.assertEqual(all_dates, sorted_dates)
+        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
+    )
 
 
-class TestDetailPage(TestCase):
+@pytest.fixture
+def news(db):
+    return News.objects.create(title='Тестовая новость', text='Просто текст.')
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.news = News.objects.create(
-            title='Тестовая новость',
-            text='Просто текст.'
+
+@pytest.fixture
+def detail_url(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def comments_list(news, author):
+    now = timezone.now()
+    for index in range(10):
+        comment = Comment.objects.create(
+            news=news,
+            author=author,
+            text=f'Tекст {index}',
         )
-        cls.detail_url = reverse('news:detail', args=(cls.news.id,))
-        cls.author = User.objects.create(username='Комментатор')
-        now = timezone.now()
-        for index in range(10):
-            comment = Comment.objects.create(
-                news=cls.news,
-                author=cls.author,
-                text=f'Tекст {index}',
-            )
-            comment.created = now + timedelta(days=index)
-            comment.save()
+        comment.created = now + timedelta(days=index)
+        comment.save()
 
-    def test_comments_order(self):
-        response = self.client.get(self.detail_url)
-        self.assertIn('news', response.context)
-        news = response.context['news']
-        all_comments = news.comment_set.all()
-        all_timestamps = [comment.created for comment in all_comments]
-        sorted_timestamps = sorted(all_timestamps)
-        self.assertEqual(all_timestamps, sorted_timestamps)
 
-    def test_anonymous_client_has_no_form(self):
-        response = self.client.get(self.detail_url)
-        self.assertNotIn('form', response.context)
+@pytest.mark.django_db
+def test_news_count(client, home_url, news_list):
+    response = client.get(home_url)
+    object_list = response.context['object_list']
+    assert object_list.count() == settings.NEWS_COUNT_ON_HOME_PAGE
 
-    def test_authorized_client_has_form(self):
-        self.client.force_login(self.author)
-        response = self.client.get(self.detail_url)
-        self.assertIn('form', response.context)
-        self.assertIsInstance(response.context['form'], CommentForm)
+
+@pytest.mark.django_db
+def test_news_order(client, home_url, news_list):
+    response = client.get(home_url)
+    object_list = response.context['object_list']
+    all_dates = [news.date for news in object_list]
+    sorted_dates = sorted(all_dates, reverse=True)
+    assert all_dates == sorted_dates
+
+
+@pytest.mark.django_db
+def test_comments_order(client, detail_url, comments_list):
+    response = client.get(detail_url)
+    assert 'news' in response.context
+    news_obj = response.context['news']
+    all_comments = news_obj.comment_set.all()
+    all_timestamps = [comment.created for comment in all_comments]
+    sorted_timestamps = sorted(all_timestamps)
+    assert all_timestamps == sorted_timestamps
+
+
+@pytest.mark.django_db
+def test_anonymous_client_has_no_form(client, detail_url):
+    response = client.get(detail_url)
+    assert 'form' not in response.context
+
+
+@pytest.mark.django_db
+def test_authorized_client_has_form(author_client, detail_url):
+    response = author_client.get(detail_url)
+    assert 'form' in response.context
+    assert isinstance(response.context['form'], CommentForm)

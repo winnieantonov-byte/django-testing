@@ -1,86 +1,123 @@
-import pytest
 from http import HTTPStatus
+
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
 from django.urls import reverse
-from pytest_django.asserts import assertRedirects, assertFormError
 from pytils.translit import slugify
 
 from notes.forms import WARNING
 from notes.models import Note
 
-
-def test_user_can_create_note(author_client, author, form_data):
-    url = reverse('notes:add')
-    response = author_client.post(url, data=form_data)
-    assertRedirects(response, reverse('notes:success'))
-    assert Note.objects.count() == 1
-    new_note = Note.objects.get()
-    assert new_note.title == form_data['title']
-    assert new_note.text == form_data['text']
-    assert new_note.slug == form_data['slug']
-    assert new_note.author == author
+User = get_user_model()
 
 
-@pytest.mark.django_db
-def test_anonymous_user_cant_create_note(client, form_data):
-    url = reverse('notes:add')
-    response = client.post(url, data=form_data)
-    login_url = reverse('users:login')
-    expected_url = f'{login_url}?next={url}'
-    assertRedirects(response, expected_url)
-    assert Note.objects.count() == 0
+class TestNoteCreation(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create(username='Автор')
+        cls.url_add = reverse('notes:add')
+        cls.url_success = reverse('notes:success')
+        cls.form_data = {
+            'title': 'Заголовок',
+            'text': 'Текст',
+            'slug': 'test-slug'
+        }
+
+    def test_user_can_create_note(self):
+        self.client.force_login(self.author)
+        response = self.client.post(self.url_add, data=self.form_data)
+        self.assertRedirects(response, self.url_success)
+        self.assertEqual(Note.objects.count(), 1)
+        new_note = Note.objects.get()
+        self.assertEqual(new_note.title, self.form_data['title'])
+        self.assertEqual(new_note.text, self.form_data['text'])
+        self.assertEqual(new_note.slug, self.form_data['slug'])
+        self.assertEqual(new_note.author, self.author)
+
+    def test_anonymous_user_cant_create_note(self):
+        response = self.client.post(self.url_add, data=self.form_data)
+        login_url = reverse('users:login')
+        expected_url = f'{login_url}?next={self.url_add}'
+        self.assertRedirects(response, expected_url)
+        self.assertEqual(Note.objects.count(), 0)
+
+    def test_not_unique_slug(self):
+        self.client.force_login(self.author)
+        note = Note.objects.create(
+            title='Заголовок',
+            text='Текст',
+            slug='unique-slug',
+            author=self.author
+        )
+        self.form_data['slug'] = note.slug
+        response = self.client.post(self.url_add, data=self.form_data)
+        self.assertFormError(
+            response,
+            'form',
+            'slug',
+            note.slug + WARNING
+        )
+        self.assertEqual(Note.objects.count(), 1)
+
+    def test_empty_slug(self):
+        self.client.force_login(self.author)
+        self.form_data.pop('slug')
+        response = self.client.post(self.url_add, data=self.form_data)
+        self.assertRedirects(response, self.url_success)
+        self.assertEqual(Note.objects.count(), 1)
+        new_note = Note.objects.get()
+        expected_slug = slugify(self.form_data['title'])
+        self.assertEqual(new_note.slug, expected_slug)
 
 
-def test_not_unique_slug(author_client, note, form_data):
-    url = reverse('notes:add')
-    form_data['slug'] = note.slug
-    response = author_client.post(url, data=form_data)
-    url = reverse('notes:add')
-    form_data['slug'] = note.slug
-    response = author_client.post(url, data=form_data)
-    assertFormError(response.context['form'], 'slug', note.slug + WARNING)
-    assert Note.objects.count() == 1
+class TestNoteEditDelete(TestCase):
 
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create(username='Автор заметки')
+        cls.reader = User.objects.create(username='Другой пользователь')
+        cls.note = Note.objects.create(
+            title='Заголовок',
+            text='Текст',
+            slug='note-slug',
+            author=cls.author
+        )
+        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
+        cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
+        cls.success_url = reverse('notes:success')
+        cls.form_data = {
+            'title': 'Новый заголовок',
+            'text': 'Новый текст',
+            'slug': 'new-slug'
+        }
 
-def test_empty_slug(author_client, form_data):
-    url = reverse('notes:add')
-    form_data.pop('slug')
-    response = author_client.post(url, data=form_data)
-    assertRedirects(response, reverse('notes:success'))
-    assert Note.objects.count() == 1
-    new_note = Note.objects.get()
-    expected_slug = slugify(form_data['title'])
-    assert new_note.slug == expected_slug
+    def test_author_can_edit_note(self):
+        self.client.force_login(self.author)
+        response = self.client.post(self.edit_url, data=self.form_data)
+        self.assertRedirects(response, self.success_url)
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.title, self.form_data['title'])
+        self.assertEqual(self.note.text, self.form_data['text'])
+        self.assertEqual(self.note.slug, self.form_data['slug'])
 
+    def test_other_user_cant_edit_note(self):
+        self.client.force_login(self.reader)
+        response = self.client.post(self.edit_url, data=self.form_data)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        note_from_db = Note.objects.get(id=self.note.id)
+        self.assertEqual(self.note.title, note_from_db.title)
+        self.assertEqual(self.note.text, note_from_db.text)
+        self.assertEqual(self.note.slug, note_from_db.slug)
 
-def test_author_can_edit_note(author_client, form_data, note):
-    url = reverse('notes:edit', args=(note.slug,))
-    response = author_client.post(url, form_data)
-    assertRedirects(response, reverse('notes:success'))
-    note.refresh_from_db()
-    assert note.title == form_data['title']
-    assert note.text == form_data['text']
-    assert note.slug == form_data['slug']
+    def test_author_can_delete_note(self):
+        self.client.force_login(self.author)
+        response = self.client.post(self.delete_url)
+        self.assertRedirects(response, self.success_url)
+        self.assertEqual(Note.objects.count(), 0)
 
-
-def test_other_user_cant_edit_note(not_author_client, form_data, note):
-    url = reverse('notes:edit', args=(note.slug,))
-    response = not_author_client.post(url, form_data)
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    note_from_db = Note.objects.get(id=note.id)
-    assert note.title == note_from_db.title
-    assert note.text == note_from_db.text
-    assert note.slug == note_from_db.slug
-
-
-def test_author_can_delete_note(author_client, note):
-    url = reverse('notes:delete', args=(note.slug,))
-    response = author_client.post(url)
-    assertRedirects(response, reverse('notes:success'))
-    assert Note.objects.count() == 0
-
-
-def test_other_user_cant_delete_note(not_author_client, note):
-    url = reverse('notes:delete', args=(note.slug,))
-    response = not_author_client.post(url)
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert Note.objects.count() == 1
+    def test_other_user_cant_delete_note(self):
+        self.client.force_login(self.reader)
+        response = self.client.post(self.delete_url)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(Note.objects.count(), 1)

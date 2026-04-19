@@ -1,63 +1,98 @@
+import pytest
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
 
 from news.models import Comment, News
 
-User = get_user_model()
+
+@pytest.fixture
+def news(db):
+    return News.objects.create(title='Заголовок', text='Текст')
 
 
-class TestRoutes(TestCase):
+@pytest.fixture
+def author(db, django_user_model):
+    return django_user_model.objects.create(username='Лев Толстой')
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.news = News.objects.create(title='Заголовок', text='Текст')
-        cls.author = User.objects.create(username='Лев Толстой')
-        cls.reader = User.objects.create(username='Читатель')
-        cls.comment = Comment.objects.create(
-            news=cls.news,
-            author=cls.author,
-            text='Текст комментария'
-        )
 
-    def test_pages_availability(self):
-        urls = (
-            ('news:home', None),
-            ('news:detail', (self.news.id,)),
-            ('users:login', None),
-            ('users:signup', None),
-        )
-        for name, args in urls:
-            with self.subTest(name=name):
-                url = reverse(name, args=args)
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, HTTPStatus.OK)
+@pytest.fixture
+def reader(db, django_user_model):
+    return django_user_model.objects.create(username='Читатель')
 
-    def test_logout_availability(self):
-        url = reverse('users:logout')
-        response = self.client.post(url)
-        self.assertIn(response.status_code, (HTTPStatus.OK, HTTPStatus.FOUND))
 
-    def test_availability_for_comment_edit_and_delete(self):
-        users_statuses = (
-            (self.author, HTTPStatus.OK),
-            (self.reader, HTTPStatus.NOT_FOUND),
-        )
-        for user, status in users_statuses:
-            self.client.force_login(user)
-            for name in ('news:edit', 'news:delete'):
-                with self.subTest(user=user, name=name):
-                    url = reverse(name, args=(self.comment.id,))
-                    response = self.client.get(url)
-                    self.assertEqual(response.status_code, status)
+@pytest.fixture
+def comment(news, author):
+    return Comment.objects.create(
+        news=news,
+        author=author,
+        text='Текст комментария'
+    )
 
-    def test_redirect_for_anonymous_client(self):
-        login_url = reverse('users:login')
-        for name in ('news:edit', 'news:delete'):
-            with self.subTest(name=name):
-                url = reverse(name, args=(self.comment.id,))
-                redirect_url = f'{login_url}?next={url}'
-                response = self.client.get(url)
-                self.assertRedirects(response, redirect_url)
+
+@pytest.fixture
+def author_client(author, client):
+    client.force_login(author)
+    return client
+
+
+@pytest.fixture
+def reader_client(reader, client):
+    client.force_login(reader)
+    return client
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'name, args_fixture',
+    (
+        ('news:home', None),
+        ('news:detail', 'news'),
+        ('users:login', None),
+        ('users:signup', None),
+    )
+)
+def test_pages_availability(client, name, args_fixture, request):
+    if args_fixture:
+        obj = request.getfixturevalue(args_fixture)
+        url = reverse(name, args=(obj.id,))
+    else:
+        url = reverse(name)
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.django_db
+def test_logout_availability(client):
+    url = reverse('users:logout')
+    response = client.post(url)
+    assert response.status_code in (HTTPStatus.OK, HTTPStatus.FOUND)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'user_client, expected_status',
+    (
+        ('author_client', HTTPStatus.OK),
+        ('reader_client', HTTPStatus.NOT_FOUND),
+    ),
+)
+@pytest.mark.parametrize('name', ('news:edit', 'news:delete'))
+def test_availability_for_comment_edit_and_delete(
+    user_client, expected_status, name, comment, request
+):
+    client_instance = request.getfixturevalue(user_client)
+    url = reverse(name, args=(comment.id,))
+    response = client_instance.get(url)
+    assert response.status_code == expected_status
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('name', ('news:edit', 'news:delete'))
+def test_redirect_for_anonymous_client(client, name, comment):
+    login_url = reverse('users:login')
+    url = reverse(name, args=(comment.id,))
+    expected_url = f'{login_url}?next={url}'
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url == expected_url
