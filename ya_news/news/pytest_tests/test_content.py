@@ -10,8 +10,24 @@ from news.models import Comment, News
 
 
 @pytest.fixture
+def author(db, django_user_model):
+    return django_user_model.objects.create(username='Автор')
+
+
+@pytest.fixture
+def author_client(author, client):
+    client.force_login(author)
+    return client
+
+
+@pytest.fixture
 def home_url():
     return reverse('news:home')
+
+
+@pytest.fixture
+def news(db):
+    return News.objects.create(title='Тестовая новость', text='Просто текст.')
 
 
 @pytest.fixture
@@ -25,11 +41,6 @@ def news_list(db):
         )
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
     )
-
-
-@pytest.fixture
-def news(db):
-    return News.objects.create(title='Тестовая новость', text='Просто текст.')
 
 
 @pytest.fixture
