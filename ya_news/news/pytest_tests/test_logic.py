@@ -1,16 +1,41 @@
 import pytest
 from http import HTTPStatus
 
+from django.urls import reverse
 from pytest_django.asserts import assertRedirects, assertFormError
 
 from news.forms import BAD_WORDS, WARNING
-from news.models import Comment
+from news.models import Comment, News
 
+@pytest.fixture
+def author(db, django_user_model):
+    return django_user_model.objects.create(username='Автор')
+
+
+@pytest.fixture
+def author_client(author, client):
+    client.force_login(author)
+    return client
+
+
+@pytest.fixture
+def news(db):
+    return News.objects.create(title='Заголовок', text='Текст')
+
+
+@pytest.fixture
+def url_detail(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def url_to_comments(url_detail):
+    return url_detail + '#comments'
 
 @pytest.mark.django_db
 def test_anonymous_user_cant_create_comment(client, url_detail):
     form_data = {'text': 'Текст комментария'}
-    client.post(url_detail, data=form_data)
+    client.post('news:detail', data=form_data)
     assert Comment.objects.count() == 0
 
 
