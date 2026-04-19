@@ -7,6 +7,7 @@ from pytest_django.asserts import assertRedirects, assertFormError
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment, News
 
+
 @pytest.fixture
 def author(db, django_user_model):
     return django_user_model.objects.create(username='Автор')
@@ -31,6 +32,7 @@ def url_detail(news):
 @pytest.fixture
 def url_to_comments(url_detail):
     return url_detail + '#comments'
+
 
 @pytest.mark.django_db
 def test_anonymous_user_cant_create_comment(client, url_detail):
