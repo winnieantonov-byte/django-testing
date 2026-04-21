@@ -31,10 +31,9 @@ class TestLogic(TestCase):
         response = self.client.post(self.ADD_URL, data=self.form_data)
         self.assertRedirects(response, self.SUCCESS_URL)
         self.assertEqual(Note.objects.count(), notes_before + 1)
-        # Ищем по слагу из формы
         new_note = Note.objects.get(slug=self.form_data['slug'])
         self.assertEqual(new_note.title, self.form_data['title'])
-        self.assertEqual(new_note.text, self.form_data)
+        self.assertEqual(new_note.text, self.form_data['text'])
         self.assertEqual(new_note.author, self.author)
 
     def test_anonymous_user_cant_create_note(self):
@@ -51,7 +50,7 @@ class TestLogic(TestCase):
         self.client.force_login(self.author)
         response = self.client.post(self.ADD_URL, data=self.form_data)
         self.assertFormError(
-            response, 'form', 'slug', errors=(note.slug + WARNING)
+            response, 'form', 'slug', note.slug + WARNING
         )
         self.assertEqual(Note.objects.count(), notes_before)
 
@@ -62,7 +61,6 @@ class TestLogic(TestCase):
         response = self.client.post(self.ADD_URL, data=self.form_data)
         self.assertRedirects(response, self.SUCCESS_URL)
         self.assertEqual(Note.objects.count(), notes_before + 1)
-        # Ищем по заголовку
         new_note = Note.objects.get(title=self.form_data['title'])
         self.assertEqual(new_note.slug, slugify(self.form_data['title']))
 
@@ -73,10 +71,9 @@ class TestLogic(TestCase):
         url = reverse('notes:edit', args=(note.slug,))
         self.client.force_login(self.author)
         self.client.post(url, data=self.form_data)
-        # Получаем обновленный объект по тому же слагу
         note_from_db = Note.objects.get(slug=self.form_data['slug'])
         self.assertEqual(note_from_db.title, self.form_data['title'])
-        self.assertEqual(note_from_db.text, self.form_data)
+        self.assertEqual(note_from_db.text, self.form_data['text'])
         self.assertEqual(note_from_db.author, self.author)
 
     def test_reader_cant_edit_note_of_another_user(self):
@@ -87,7 +84,6 @@ class TestLogic(TestCase):
         self.client.force_login(self.reader)
         response = self.client.post(url, data=self.form_data)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        # Проверяем, что в базе все осталось по-прежнему
         note_from_db = Note.objects.get(slug=note.slug)
         self.assertEqual(note.title, note_from_db.title)
         self.assertEqual(note.author, self.author)
