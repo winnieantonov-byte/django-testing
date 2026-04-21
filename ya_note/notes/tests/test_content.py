@@ -1,29 +1,52 @@
-import pytest
-from pytest_lazyfixture import lazy_fixture
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
 
 from notes.forms import NoteForm
-from .constants import ADD_URL, EDIT_URL, LIST_URL
+from notes.models import Note
+
+User = get_user_model()
 
 
-@pytest.mark.parametrize(
-    'parametrized_client, expected_count',
-    (
-        (lazy_fixture('author_client'), 1),
-        (lazy_fixture('reader_client'), 0),
-    ),
-)
-def test_notes_list_for_different_users(
-    parametrized_client, expected_count, note
-):
-    all_notes = parametrized_client.get(LIST_URL).context['object_list']
-    assert all_notes.count() == expected_count
-    if expected_count > 0:
-        note_from_list = all_notes.get()
-        assert note_from_list.title == note.title
-        assert note_from_list.text == note.text
-        assert note_from_list.slug == note.slug
+class TestContent(TestCase):
+    LIST_URL = reverse('notes:list')
 
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create(username='Автор')
+        cls.reader = User.objects.create(username='Читатель')
+        cls.note = Note.objects.create(
+            title='Заголовок',
+            text='Текст',
+            slug='note-slug',
+            author=cls.author
+        )
 
-@pytest.mark.parametrize('url', (ADD_URL, EDIT_URL))
-def test_pages_contains_form(author_client, url):
-    assert isinstance(author_client.get(url).context['form'], NoteForm)
+    def test_notes_list_for_different_users(self):
+        users_params = (
+            (self.author, True),
+            (self.reader, False),
+        )
+        for user, note_in_list in users_params:
+            with self.subTest(user=user):
+                self.client.force_login(user)
+                response = self.client.get(self.LIST_URL)
+                all_notes = response.context['object_list']
+                self.assertEqual((self.note in all_notes), note_in_list)
+                if note_in_list:
+                    note_obj = all_notes.get(slug=self.note.slug)
+                    self.assertEqual(note_obj.title, self.note.title)
+                    self.assertEqual(note_obj.text, self.note.text)
+                    self.assertEqual(note_obj.slug, self.note.slug)
+
+    def test_pages_contains_form(self):
+        urls = (
+            reverse('notes:add'),
+            reverse('notes:edit', args=(self.note.slug,)),
+        )
+        self.client.force_login(self.author)
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertIn('form', response.context)
+                self.assertIsInstance(response.context['form'], NoteForm)
