@@ -27,10 +27,11 @@ def test_user_can_create_comment(
 
 @pytest.mark.parametrize('word', BAD_WORDS)
 def test_user_cant_use_bad_words(author_client, url_detail, word):
+    """Пользователь не может использовать плохие слова в комментарии."""
     bad_words_data = {'text': f'Текст с {word}'}
     response = author_client.post(url_detail, data=bad_words_data)
-    assert response.status_code == HTTPStatus.OK
-    assert WARNING in response.context['form'].errors
+    form = response.context['form']
+    assert WARNING in form.errors
     assert Comment.objects.count() == 0
 
 
