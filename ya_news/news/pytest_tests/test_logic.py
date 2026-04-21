@@ -25,7 +25,7 @@ def test_user_can_create_comment(
     assert new_comment.author == author
 
 
-@pytest.mark.parametrize('word', BAD_WORDS)
+@pytest.mark.django_db
 def test_user_cant_use_bad_words(author_client, url_detail):
     bad_words_data = {'text': f'Текст с {BAD_WORDS[0]}'}
     response = author_client.post(url_detail, data=bad_words_data)
