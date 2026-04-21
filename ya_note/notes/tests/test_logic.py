@@ -49,9 +49,7 @@ class TestLogic(TestCase):
         notes_before = Note.objects.count()
         self.client.force_login(self.author)
         response = self.client.post(self.ADD_URL, data=self.form_data)
-        self.assertFormError(
-            response, 'form', 'slug', note.slug + WARNING
-        )
+        self.assertFormError(response, 'form', 'slug', note.slug + WARNING)
         self.assertEqual(Note.objects.count(), notes_before)
 
     def test_empty_slug_is_filled_by_slugify(self):
