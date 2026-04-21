@@ -1,48 +1,29 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.urls import reverse
+import pytest
+from pytest_lazyfixture import lazy_fixture
 
 from notes.forms import NoteForm
-from notes.models import Note
-
-User = get_user_model()
+from .constants import ADD_URL, EDIT_URL, LIST_URL
 
 
-class TestContent(TestCase):
+@pytest.mark.parametrize(
+    'parametrized_client, expected_count',
+    (
+        (lazy_fixture('author_client'), 1),
+        (lazy_fixture('reader_client'), 0),
+    ),
+)
+def test_notes_list_for_different_users(
+    parametrized_client, expected_count, note
+):
+    all_notes = parametrized_client.get(LIST_URL).context['object_list']
+    assert all_notes.count() == expected_count
+    if expected_count > 0:
+        note_from_list = all_notes.get()
+        assert note_from_list.title == note.title
+        assert note_from_list.text == note.text
+        assert note_from_list.slug == note.slug
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.reader = User.objects.create(username='Читатель')
-        cls.note = Note.objects.create(
-            title='Заголовок',
-            text='Текст',
-            slug='note-slug',
-            author=cls.author
-        )
-        cls.list_url = reverse('notes:list')
 
-    def test_notes_list_for_different_users(self):
-        users_statuses = (
-            (self.author, True),
-            (self.reader, False),
-        )
-        for user, note_in_list in users_statuses:
-            with self.subTest(user=user):
-                self.client.force_login(user)
-                response = self.client.get(self.list_url)
-                object_list = response.context['object_list']
-                self.assertEqual((self.note in object_list), note_in_list)
-
-    def test_pages_contains_form(self):
-        urls = (
-            ('notes:add', None),
-            ('notes:edit', (self.note.slug,)),
-        )
-        self.client.force_login(self.author)
-        for name, args in urls:
-            with self.subTest(name=name):
-                url = reverse(name, args=args)
-                response = self.client.get(url)
-                self.assertIn('form', response.context)
-                self.assertIsInstance(response.context['form'], NoteForm)
+@pytest.mark.parametrize('url', (ADD_URL, EDIT_URL))
+def test_pages_contains_form(author_client, url):
+    assert isinstance(author_client.get(url).context['form'], NoteForm)

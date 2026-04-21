@@ -1,119 +1,79 @@
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.urls import reverse
+import pytest
+from pytest_django.asserts import assertRedirects
 from pytils.translit import slugify
 
 from notes.forms import WARNING
 from notes.models import Note
-
-User = get_user_model()
-
-
-class TestNoteCreation(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.url_add = reverse('notes:add')
-        cls.url_success = reverse('notes:success')
-        cls.form_data = {
-            'title': 'Заголовок',
-            'text': 'Текст',
-            'slug': 'test-slug'
-        }
-
-    def test_user_can_create_note(self):
-        self.client.force_login(self.author)
-        response = self.client.post(self.url_add, data=self.form_data)
-        self.assertRedirects(response, self.url_success)
-        self.assertEqual(Note.objects.count(), 1)
-        new_note = Note.objects.get()
-        self.assertEqual(new_note.title, self.form_data['title'])
-        self.assertEqual(new_note.text, self.form_data['text'])
-        self.assertEqual(new_note.slug, self.form_data['slug'])
-        self.assertEqual(new_note.author, self.author)
-
-    def test_anonymous_user_cant_create_note(self):
-        response = self.client.post(self.url_add, data=self.form_data)
-        login_url = reverse('users:login')
-        expected_url = f'{login_url}?next={self.url_add}'
-        self.assertRedirects(response, expected_url)
-        self.assertEqual(Note.objects.count(), 0)
-
-    def test_not_unique_slug(self):
-        self.client.force_login(self.author)
-        note = Note.objects.create(
-            title='Заголовок',
-            text='Текст',
-            slug='unique-slug',
-            author=self.author
-        )
-        self.form_data['slug'] = note.slug
-        response = self.client.post(self.url_add, data=self.form_data)
-        form = response.context['form']
-        self.assertIn(note.slug + WARNING, form.errors['slug'])
-        self.assertEqual(Note.objects.count(), 1)
-
-    def test_empty_slug(self):
-        self.client.force_login(self.author)
-        self.form_data.pop('slug')
-        response = self.client.post(self.url_add, data=self.form_data)
-        self.assertRedirects(response, self.url_success)
-        self.assertEqual(Note.objects.count(), 1)
-        new_note = Note.objects.get()
-        expected_slug = slugify(self.form_data['title'])
-        self.assertEqual(new_note.slug, expected_slug)
+from .constants import ADD_URL, DELETE_URL, EDIT_URL, SUCCESS_URL
 
 
-class TestNoteEditDelete(TestCase):
+@pytest.mark.django_db
+def test_user_can_create_note(author_client, author, form_data):
+    notes_before = Note.objects.count()
+    assertRedirects(author_client.post(ADD_URL, data=form_data), SUCCESS_URL)
+    assert Note.objects.count() == notes_before + 1
+    new_note = Note.objects.get(slug=form_data['slug'])
+    assert new_note.title == form_data['title']
+    assert new_note.text == form_data['text']
+    assert new_note.author == author
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор заметки')
-        cls.reader = User.objects.create(username='Другой пользователь')
-        cls.note = Note.objects.create(
-            title='Заголовок',
-            text='Текст',
-            slug='note-slug',
-            author=cls.author
-        )
-        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
-        cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
-        cls.success_url = reverse('notes:success')
-        cls.form_data = {
-            'title': 'Новый заголовок',
-            'text': 'Новый текст',
-            'slug': 'new-slug'
-        }
 
-    def test_author_can_edit_note(self):
-        self.client.force_login(self.author)
-        response = self.client.post(self.edit_url, data=self.form_data)
-        self.assertRedirects(response, self.success_url)
-        self.note.refresh_from_db()
-        self.assertEqual(self.note.title, self.form_data['title'])
-        self.assertEqual(self.note.text, self.form_data['text'])
-        self.assertEqual(self.note.slug, self.form_data['slug'])
+@pytest.mark.django_db
+def test_user_cant_create_note_with_non_unique_slug(
+    author_client, note, form_data
+):
+    notes_before = list(Note.objects.all())
+    form_data['slug'] = note.slug
+    response = author_client.post(ADD_URL, data=form_data)
+    assert response.status_code == HTTPStatus.OK
+    assert WARNING in response.context['form'].errors['slug']
+    assert notes_before == list(Note.objects.all())
 
-    def test_other_user_cant_edit_note(self):
-        self.client.force_login(self.reader)
-        response = self.client.post(self.edit_url, data=self.form_data)
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        note_from_db = Note.objects.get(pk=self.note.pk)
-        self.assertEqual(self.note.title, note_from_db.title)
-        self.assertEqual(self.note.text, note_from_db.text)
-        self.assertEqual(self.note.slug, note_from_db.slug)
 
-    def test_author_can_delete_note(self):
-        self.client.force_login(self.author)
-        response = self.client.post(self.delete_url)
-        self.assertRedirects(response, self.success_url)
-        self.assertEqual(Note.objects.count(), 0)
+@pytest.mark.django_db
+def test_empty_slug_is_filled_by_slugify(author_client, author, form_data):
+    notes_before = Note.objects.count()
+    form_data.pop('slug')
+    assertRedirects(author_client.post(ADD_URL, data=form_data), SUCCESS_URL)
+    assert Note.objects.count() == notes_before + 1
+    new_note = Note.objects.get(title=form_data['title'])
+    assert new_note.slug == slugify(form_data['title'])
+    assert new_note.author == author
 
-    def test_other_user_cant_delete_note(self):
-        self.client.force_login(self.reader)
-        response = self.client.post(self.delete_url)
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.assertEqual(Note.objects.count(), 1)
+
+@pytest.mark.django_db
+def test_author_can_edit_note(author_client, author, note, form_data):
+    assertRedirects(author_client.post(EDIT_URL, data=form_data), SUCCESS_URL)
+    note_from_db = Note.objects.get(id=note.id)
+    assert note_from_db.title == form_data['title']
+    assert note_from_db.text == form_data['text']
+    assert note_from_db.slug == form_data['slug']
+    assert note_from_db.author == author
+
+
+@pytest.mark.django_db
+def test_reader_cant_edit_note_of_another_user(
+    reader_client, author, note, form_data
+):
+    response = reader_client.post(EDIT_URL, data=form_data)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    note_from_db = Note.objects.get(id=note.id)
+    assert note_from_db.author == author
+    note_from_db = Note.objects.get(id=note.id)
+    assert note_from_db.author == author
+
+
+@pytest.mark.django_db
+def test_author_can_delete_note(author_client, note):
+    notes_before = Note.objects.count()
+    assertRedirects(author_client.post(DELETE_URL), SUCCESS_URL)
+    assert Note.objects.count() == notes_before - 1
+
+
+@pytest.mark.django_db
+def test_reader_cant_delete_note_of_another_user(reader_client, note):
+    notes_before = list(Note.objects.all())
+    assert reader_client.post(DELETE_URL).status_code == HTTPStatus.NOT_FOUND
+    assert notes_before == list(Note.objects.all())

@@ -1,35 +1,60 @@
-from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+import pytest
+from django.test import Client
 
 from notes.models import Note
+from .constants import LOGIN_URL, NOTE_SLUG
 
-User = get_user_model()
+
+@pytest.fixture(autouse=True)
+def enable_db_access(db):
+    pass
 
 
-class BaseTest(TestCase):
+@pytest.fixture
+def author(django_user_model):
+    return django_user_model.objects.create(username='Автор')
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.not_author = User.objects.create(username='Не автор')
 
-        cls.author_client = Client()
-        cls.author_client.force_login(cls.author)
+@pytest.fixture
+def reader(django_user_model):
+    return django_user_model.objects.create(username='Читатель')
 
-        cls.not_author_client = Client()
-        cls.not_author_client.force_login(cls.not_author)
 
-        cls.note = Note.objects.create(
-            title='Заголовок',
-            text='Текст заметки',
-            slug='note-slug',
-            author=cls.author,
-        )
+@pytest.fixture
+def author_client(author):
+    client = Client()
+    client.force_login(author)
+    return client
 
-        cls.slug_for_args = (cls.note.slug,)
 
-        cls.form_data = {
-            'title': 'Новый заголовок',
-            'text': 'Новый текст',
-            'slug': 'new-slug'
-        }
+@pytest.fixture
+def reader_client(reader):
+    client = Client()
+    client.force_login(reader)
+    return client
+
+
+@pytest.fixture
+def note(author):
+    return Note.objects.create(
+        title='Заголовок',
+        text='Текст',
+        slug=NOTE_SLUG,
+        author=author
+    )
+
+
+@pytest.fixture
+def form_data():
+    return {
+        'title': 'Новый заголовок',
+        'text': 'Новый текст',
+        'slug': 'new-slug'
+    }
+
+
+@pytest.fixture
+def expected_redirect_url():
+    def _create_url(url):
+        return f'{LOGIN_URL}?next={url}'
+    return _create_url
