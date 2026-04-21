@@ -42,14 +42,18 @@ class TestLogic(TestCase):
         self.assertEqual(Note.objects.count(), notes_before)
 
     def test_not_unique_slug(self):
-        note = Note.objects.create(
-            title='Оригинал', text='Текст', slug='unique', author=self.author
-        )
-        self.form_data['slug'] = note.slug
-        notes_before = Note.objects.count()
         self.client.force_login(self.author)
+        note = Note.objects.create(
+            title='Заголовок',
+            text='Текст',
+            slug='unique-slug',
+            author=self.author
+        )
+        notes_before = Note.objects.count()
+        self.form_data['slug'] = note.slug
         response = self.client.post(self.ADD_URL, data=self.form_data)
-        self.assertFormError(response, 'form', 'slug', note.slug + WARNING)
+        form = response.context['form']
+        self.assertIn(note.slug + WARNING, form.errors['slug'])
         self.assertEqual(Note.objects.count(), notes_before)
 
     def test_empty_slug_is_filled_by_slugify(self):
