@@ -1,24 +1,27 @@
 from django.conf import settings
+
 from news.forms import CommentForm
+from .constants import HOME_URL
 
 
-def test_news_count(client, url_home, all_news):
-    response = client.get(url_home)
+def test_news_count(client, news_list):
+    response = client.get(HOME_URL)
     news_count = response.context['object_list'].count()
     assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-def test_news_order(client, url_home, all_news):
-    response = client.get(url_home)
+def test_news_order(client, news_list):
+    response = client.get(HOME_URL)
     news_dates = [news.date for news in response.context['object_list']]
     assert news_dates == sorted(news_dates, reverse=True)
 
 
-def test_comments_order(client, url_detail, comment):
+def test_comments_order(client, url_detail, comments_list):
     response = client.get(url_detail)
     assert 'news' in response.context
+    news_obj = response.context['news']
     timestamps = [
-        c.created for c in response.context['news'].comment_set.all()
+        c.created for c in news_obj.comment_set.all()
     ]
     assert timestamps == sorted(timestamps)
 
