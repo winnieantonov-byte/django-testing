@@ -1,6 +1,6 @@
-import pytest
 from datetime import datetime, timedelta
 
+import pytest
 from django.conf import settings
 from django.test import Client
 from django.urls import reverse
@@ -12,6 +12,26 @@ from news.models import Comment, News
 @pytest.fixture(autouse=True)
 def enable_db_access(db):
     pass
+
+
+@pytest.fixture
+def home_url():
+    return reverse('news:home')
+
+
+@pytest.fixture
+def login_url():
+    return reverse('users:login')
+
+
+@pytest.fixture
+def logout_url():
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def signup_url():
+    return reverse('users:signup')
 
 
 @pytest.fixture
@@ -45,12 +65,11 @@ def news(db):
 
 @pytest.fixture
 def news_list(db):
-    today = datetime.today()
     News.objects.bulk_create(
         News(
             title=f'Новость {index}',
             text='Просто текст.',
-            date=today - timedelta(days=index)
+            date=datetime.today() - timedelta(days=index)
         )
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
     )
@@ -68,15 +87,22 @@ def comment(news, author):
 @pytest.fixture
 def comments_list(news, author):
     now = timezone.now()
-    for index in range(10):
-        comment = Comment.objects.create(
+    comments = [
+        Comment(
             news=news,
             author=author,
             text=f'Tекст {index}',
         )
-        Comment.objects.filter(id=comment.id).update(
-            created=now + timedelta(days=index)
-        )
+        for index in range(10)
+    ]
+    Comment.objects.bulk_create(comments)
+    created_comments = (
+        Comment.objects.filter(news=news, author=author)
+        .order_by('id')[:10]
+    )
+    for index, comment in enumerate(created_comments):
+        comment.created = now + timedelta(days=index)
+    Comment.objects.bulk_update(created_comments, ['created'])
 
 
 @pytest.fixture
