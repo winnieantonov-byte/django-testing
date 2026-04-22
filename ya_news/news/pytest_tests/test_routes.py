@@ -53,8 +53,8 @@ PAGES_AVAILABILITY_CASES = (
 )
 
 REDIRECT_CASES = (
-    (lazy_fixture('url_edit'), HTTPStatus.FOUND, lazy_fixture('login_url')),
-    (lazy_fixture('url_delete'), HTTPStatus.FOUND, lazy_fixture('login_url')),
+    (lazy_fixture('url_edit'), HTTPStatus.FOUND, lazy_fixture('url_login')),
+    (lazy_fixture('url_delete'), HTTPStatus.FOUND, lazy_fixture('url_login')),
 )
 
 
@@ -73,13 +73,13 @@ def test_pages_availability_for_different_users(
 
 
 @pytest.mark.parametrize(
-    'url, expected_status, login_url',
+    'url, expected_status, login_page_url',
     REDIRECT_CASES,
 )
 def test_redirect_for_anonymous_client(
-    client, url, expected_status, login_url
+    client, url, expected_status, login_page_url
 ):
-    expected_url = f'{login_url}?next={url}'
+    expected_url = f'{login_page_url}?next={url}'
     response = client.get(url)
     assert response.status_code == expected_status
     assertRedirects(response, expected_url)

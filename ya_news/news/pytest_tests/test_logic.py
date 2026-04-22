@@ -18,12 +18,12 @@ BAD_WORDS_CASES = [
 ]
 
 DELETE_COMMENT_CASES = [
-    ("author_client", 0, HTTPStatus.OK),
+    ("author_client", 0, HTTPStatus.FOUND),
     ("reader_client", 1, HTTPStatus.NOT_FOUND),
 ]
 
 EDIT_COMMENT_CASES = [
-    ("author_client", True, HTTPStatus.OK),
+    ("author_client", True, HTTPStatus.FOUND),
     ("reader_client", False, HTTPStatus.NOT_FOUND),
 ]
 
