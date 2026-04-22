@@ -1,10 +1,10 @@
 from http import HTTPStatus
 
-from pytils.translit import slugify
-
 from notes.forms import WARNING
 from notes.models import Note
 from notes.tests.conftest import BaseTestCase
+from pytils.translit import slugify
+
 
 class TestLogic(BaseTestCase):
 
@@ -27,7 +27,9 @@ class TestLogic(BaseTestCase):
 
     def test_not_unique_slug(self):
         notes_before = set(
-            Note.objects.values_list('id', 'title', 'text', 'slug', 'author_id')
+            Note.objects.values_list(
+                'id', 'title', 'text', 'slug', 'author_id'
+            )
         )
         form_data = self.form_data.copy()
         form_data['slug'] = self.note.slug
@@ -35,7 +37,9 @@ class TestLogic(BaseTestCase):
         form = response.context['form']
         self.assertIn(self.note.slug + WARNING, form.errors['slug'])
         notes_after = set(
-            Note.objects.values_list('id', 'title', 'text', 'slug', 'author_id')
+            Note.objects.values_list(
+                'id', 'title', 'text', 'slug', 'author_id'
+            )
         )
         self.assertSetEqual(notes_after, notes_before)
 
@@ -81,11 +85,15 @@ class TestLogic(BaseTestCase):
 
     def test_reader_cant_delete_note_of_another_user(self):
         notes_before = set(
-            Note.objects.values_list('id', 'title', 'text', 'slug', 'author_id')
+            Note.objects.values_list(
+                'id', 'title', 'text', 'slug', 'author_id'
+            )
         )
         response = self.reader_client.post(self.DELETE_URL)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         notes_after = set(
-            Note.objects.values_list('id', 'title', 'text', 'slug', 'author_id')
+            Note.objects.values_list(
+                'id', 'title', 'text', 'slug', 'author_id'
+            )
         )
         self.assertSetEqual(notes_after, notes_before)

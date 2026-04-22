@@ -1,14 +1,11 @@
 from django.conf import settings
-
 from news.forms import CommentForm
 
 
 def test_news_count(client, news_list, home_url):
     response = client.get(home_url)
-    assert (
-        len(response.context['object_list']) ==
-        settings.NEWS_COUNT_ON_HOME_PAGE
-    )
+    news_count = len(response.context['object_list'])
+    assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
 def test_news_order(client, news_list, home_url):
