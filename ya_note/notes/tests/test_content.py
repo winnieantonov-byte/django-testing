@@ -1,52 +1,28 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.urls import reverse
-
+from notes.tests.conftest import BaseTestCase
 from notes.forms import NoteForm
-from notes.models import Note
-
-User = get_user_model()
 
 
-class TestContent(TestCase):
-    LIST_URL = reverse('notes:list')
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.reader = User.objects.create(username='Читатель')
-        cls.note = Note.objects.create(
-            title='Заголовок',
-            text='Текст',
-            slug='note-slug',
-            author=cls.author
-        )
-
+class TestContent(BaseTestCase):
     def test_notes_list_for_different_users(self):
         users_params = (
-            (self.author, True),
-            (self.reader, False),
+            (self.author_client, True),
+            (self.reader_client, False),
         )
-        for user, note_in_list in users_params:
-            with self.subTest(user=user):
-                self.client.force_login(user)
-                response = self.client.get(self.LIST_URL)
+        for client, note_in_list in users_params:
+            with self.subTest(client=client):
+                response = client.get(self.LIST_URL)
                 all_notes = response.context['object_list']
                 self.assertEqual((self.note in all_notes), note_in_list)
                 if note_in_list:
-                    note_obj = all_notes.get(slug=self.note.slug)
-                    self.assertEqual(note_obj.title, self.note.title)
-                    self.assertEqual(note_obj.text, self.note.text)
-                    self.assertEqual(note_obj.slug, self.note.slug)
+                    self.assertEqual(all_notes.count(), 1)
+                    note = all_notes[0]
+                    self.assertEqual(note.title, self.note.title)
+                    self.assertEqual(note.text, self.note.text)
+                    self.assertEqual(note.slug, self.note.slug)
 
     def test_pages_contains_form(self):
-        urls = (
-            reverse('notes:add'),
-            reverse('notes:edit', args=(self.note.slug,)),
-        )
-        self.client.force_login(self.author)
-        for url in urls:
+        for url in self.PAGES_WITH_FORM_URLS:
             with self.subTest(url=url):
-                response = self.client.get(url)
+                response = self.author_client.get(url)
                 self.assertIn('form', response.context)
                 self.assertIsInstance(response.context['form'], NoteForm)
