@@ -8,38 +8,40 @@ User = get_user_model()
 
 
 class BaseTestCase(TestCase):
-    NOTE_SLUG = 'note-slug'
 
     @classmethod
     def setUpTestData(cls):
-        # Пользователи
         cls.author = User.objects.create(username='Автор')
         cls.reader = User.objects.create(username='Читатель')
-        # Клиенты
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
         cls.reader_client = Client()
         cls.reader_client.force_login(cls.reader)
-        # Данные
+
+        cls.NOTE_SLUG = 'note-slug'
         cls.note = Note.objects.create(
             title='Заголовок',
             text='Текст',
             slug=cls.NOTE_SLUG,
             author=cls.author
         )
+
+        cls.LOGIN_URL = reverse('users:login')
+        cls.LIST_URL = reverse('notes:list')
+        cls.ADD_URL = reverse('notes:add')
+        cls.SUCCESS_URL = reverse('notes:success')
+        cls.EDIT_URL = reverse('notes:edit', args=(cls.NOTE_SLUG,))
+        cls.DELETE_URL = reverse('notes:delete', args=(cls.NOTE_SLUG,))
+        cls.ANON_REDIRECT_CASES = (
+            (cls.LIST_URL, f'{cls.LOGIN_URL}?next={cls.LIST_URL}'),
+            (cls.ADD_URL, f'{cls.LOGIN_URL}?next={cls.ADD_URL}'),
+            (cls.SUCCESS_URL, f'{cls.LOGIN_URL}?next={cls.SUCCESS_URL}'),
+            (cls.EDIT_URL, f'{cls.LOGIN_URL}?next={cls.EDIT_URL}'),
+            (cls.DELETE_URL, f'{cls.LOGIN_URL}?next={cls.DELETE_URL}'),
+        )
+
         cls.form_data = {
             'title': 'Новый заголовок',
             'text': 'Новый текст',
             'slug': 'new-slug'
         }
-        # URL-адреса (атрибуты, которые используются в логике и роутах)
-        cls.HOME_URL = reverse('notes:home')
-        cls.LOGIN_URL = reverse('users:login')
-        cls.LOGOUT_URL = reverse('users:logout')
-        cls.SIGNUP_URL = reverse('users:signup')
-        cls.LIST_URL = reverse('notes:list')
-        cls.ADD_URL = reverse('notes:add')
-        cls.SUCCESS_URL = reverse('notes:success')
-        cls.DETAIL_URL = reverse('notes:detail', args=(cls.NOTE_SLUG,))
-        cls.EDIT_URL = reverse('notes:edit', args=(cls.NOTE_SLUG,))
-        cls.DELETE_URL = reverse('notes:delete', args=(cls.NOTE_SLUG,))
