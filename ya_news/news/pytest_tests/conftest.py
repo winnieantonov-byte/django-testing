@@ -33,7 +33,6 @@ def comments_list(news, author):
             author=author,
             text=f'Текст {index}',
         )
-        # Устанавливаем время создания вручную для теста сортировки
         comment.created = now + timedelta(days=index)
         comment.save()
 
