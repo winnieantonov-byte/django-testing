@@ -1,55 +1,12 @@
 from datetime import datetime, timedelta
-from http import HTTPStatus
 
 import pytest
 from django.conf import settings
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
-from pytest_lazyfixture import lazy_fixture
-from news.forms import BAD_WORDS
+
 from news.models import Comment, News
-
-# --- Константы для параметризации ---
-
-CREATE_COMMENT_CASES = [
-    ('client', 0),
-    ('author_client', 1),
-]
-
-BAD_WORDS_CASES = [
-    {'text': f'Текст с {word}'} for word in BAD_WORDS
-]
-
-
-CLIENT = lazy_fixture('client')
-AUTHOR_CLIENT = lazy_fixture('author_client')
-READER_CLIENT = lazy_fixture('reader_client')
-
-HOME_URL = lazy_fixture('home_url')
-LOGIN_URL = lazy_fixture('login_url')
-LOGOUT_URL = lazy_fixture('logout_url')
-SIGNUP_URL = lazy_fixture('signup_url')
-DETAIL_URL = lazy_fixture('url_detail')
-EDIT_URL = lazy_fixture('url_edit')
-DELETE_URL = lazy_fixture('url_delete')
-
-PAGES_AVAILABILITY_CASES = (
-    (HOME_URL, CLIENT, HTTPStatus.OK, 'get'),
-    (LOGIN_URL, CLIENT, HTTPStatus.OK, 'get'),
-    (LOGOUT_URL, CLIENT, HTTPStatus.OK, 'post'),
-    (SIGNUP_URL, CLIENT, HTTPStatus.OK, 'get'),
-    (DETAIL_URL, CLIENT, HTTPStatus.OK, 'get'),
-    (EDIT_URL, AUTHOR_CLIENT, HTTPStatus.OK, 'get'),
-    (EDIT_URL, READER_CLIENT, HTTPStatus.NOT_FOUND, 'get'),
-    (DELETE_URL, AUTHOR_CLIENT, HTTPStatus.OK, 'get'),
-    (DELETE_URL, READER_CLIENT, HTTPStatus.NOT_FOUND, 'get'),
-)
-
-REDIRECT_CASES = (
-    (EDIT_URL, HTTPStatus.FOUND, LOGIN_URL),
-    (DELETE_URL, HTTPStatus.FOUND, LOGIN_URL),
-)
 
 # --- Фикстуры для создания данных ---
 
@@ -76,6 +33,7 @@ def comments_list(news, author):
             author=author,
             text=f'Текст {index}',
         )
+        # Устанавливаем время создания вручную для теста сортировки
         comment.created = now + timedelta(days=index)
         comment.save()
 
@@ -165,5 +123,10 @@ def url_delete(comment):
 
 
 @pytest.fixture
-def form_data():
-    return {'text': 'Текст комментария'}
+def expected_edit_redirect_url(login_url, url_edit):
+    return f'{login_url}?next={url_edit}'
+
+
+@pytest.fixture
+def expected_delete_redirect_url(login_url, url_delete):
+    return f'{login_url}?next={url_delete}'

@@ -1,9 +1,32 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+
 from notes.models import Note
 
 User = get_user_model()
+
+# --- Константы URL ---
+
+LOGIN_URL = reverse('users:login')
+LIST_URL = reverse('notes:list')
+ADD_URL = reverse('notes:add')
+SUCCESS_URL = reverse('notes:success')
+
+NOTE_SLUG = 'note-slug'
+EDIT_URL = reverse('notes:edit', args=(NOTE_SLUG,))
+DELETE_URL = reverse('notes:delete', args=(NOTE_SLUG,))
+DETAIL_URL = reverse('notes:detail', args=(NOTE_SLUG,))
+REDIRECT_URL = f'{LOGIN_URL}?next={ADD_URL}'
+
+ANON_REDIRECT_CASES = (
+    (LIST_URL, f'{LOGIN_URL}?next={LIST_URL}'),
+    (ADD_URL, REDIRECT_URL),
+    (SUCCESS_URL, f'{LOGIN_URL}?next={SUCCESS_URL}'),
+    (EDIT_URL, f'{LOGIN_URL}?next={EDIT_URL}'),
+    (DELETE_URL, f'{LOGIN_URL}?next={DELETE_URL}'),
+    (DETAIL_URL, f'{LOGIN_URL}?next={DETAIL_URL}'),
+)
 
 
 class BaseTestCase(TestCase):
@@ -16,27 +39,11 @@ class BaseTestCase(TestCase):
         cls.author_client.force_login(cls.author)
         cls.reader_client = Client()
         cls.reader_client.force_login(cls.reader)
-
-        cls.NOTE_SLUG = 'note-slug'
         cls.note = Note.objects.create(
             title='Заголовок',
             text='Текст',
-            slug=cls.NOTE_SLUG,
+            slug=NOTE_SLUG,
             author=cls.author
-        )
-
-        cls.LOGIN_URL = reverse('users:login')
-        cls.LIST_URL = reverse('notes:list')
-        cls.ADD_URL = reverse('notes:add')
-        cls.SUCCESS_URL = reverse('notes:success')
-        cls.EDIT_URL = reverse('notes:edit', args=(cls.NOTE_SLUG,))
-        cls.DELETE_URL = reverse('notes:delete', args=(cls.NOTE_SLUG,))
-        cls.ANON_REDIRECT_CASES = (
-            (cls.LIST_URL, f'{cls.LOGIN_URL}?next={cls.LIST_URL}'),
-            (cls.ADD_URL, f'{cls.LOGIN_URL}?next={cls.ADD_URL}'),
-            (cls.SUCCESS_URL, f'{cls.LOGIN_URL}?next={cls.SUCCESS_URL}'),
-            (cls.EDIT_URL, f'{cls.LOGIN_URL}?next={cls.EDIT_URL}'),
-            (cls.DELETE_URL, f'{cls.LOGIN_URL}?next={cls.DELETE_URL}'),
         )
 
         cls.form_data = {

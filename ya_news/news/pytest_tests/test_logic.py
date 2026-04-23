@@ -1,37 +1,40 @@
 from http import HTTPStatus
 
 import pytest
+
+from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
 
-from .conftest import BAD_WORDS_CASES, CREATE_COMMENT_CASES
+
+BAD_WORDS_CASES = [
+    {'text': f'Текст с {word}'} for word in BAD_WORDS
+]
 
 
-@pytest.mark.parametrize(
-    'client_fixture, expected_count', CREATE_COMMENT_CASES
-)
-def test_create_comment_count(
-    request, client_fixture, expected_count, url_detail, form_data
-):
-    client = request.getfixturevalue(client_fixture)
+def test_anonymous_user_cant_create_comment(client, url_detail, form_data):
+    Comment.objects.all().delete()
     client.post(url_detail, data=form_data)
-    assert Comment.objects.count() == expected_count
+    assert Comment.objects.count() == 0
 
 
-def test_author_comment_fields(
-    author_client, url_detail, author, news, form_data
+def test_auth_user_can_create_comment(
+    author_client, author, news, url_detail, form_data
 ):
+    Comment.objects.all().delete()
     author_client.post(url_detail, data=form_data)
     assert Comment.objects.count() == 1
-    new_comment = Comment.objects.get()
-    assert new_comment.text == form_data['text']
-    assert new_comment.news == news
-    assert new_comment.author == author
+    comment = Comment.objects.get()
+    assert comment.text == form_data['text']
+    assert comment.news == news
+    assert comment.author == author
 
 
 @pytest.mark.parametrize('form_data_bad', BAD_WORDS_CASES)
-def test_comment_validation(author_client, url_detail, form_data_bad):
+def test_user_cant_use_bad_words(author_client, url_detail, form_data_bad):
+    Comment.objects.all().delete()
     response = author_client.post(url_detail, data=form_data_bad)
-    assert response.status_code == HTTPStatus.OK
+    assert 'form' in response.context
+    assert WARNING in response.context['form'].errors['text']
     assert Comment.objects.count() == 0
 
 
@@ -40,25 +43,29 @@ def test_author_can_delete_comment(author_client, url_delete):
     assert Comment.objects.count() == 0
 
 
-def test_reader_cant_delete_comment_of_author(reader_client, url_delete):
+def test_reader_cant_delete_comment_of_author(
+    reader_client, url_delete, comment, author, news
+):
     assert reader_client.post(url_delete).status_code == HTTPStatus.NOT_FOUND
     assert Comment.objects.count() == 1
+    comment_from_db = Comment.objects.get()
+    assert comment_from_db.text == comment.text
+    assert comment_from_db.author == author
+    assert comment_from_db.news == news
 
 
 def test_author_can_edit_comment(author_client, url_edit, comment, form_data):
-    new_text = 'Обновленный текст'
-    form_data['text'] = new_text
     response = author_client.post(url_edit, data=form_data)
     assert response.status_code == HTTPStatus.FOUND
-    comment.refresh_from_db()
-    assert comment.text == new_text
+    assert comment.text == form_data['text']
 
 
 def test_reader_cant_edit_comment_of_author(
-    reader_client, url_edit, comment, form_data
+    reader_client, url_edit, comment, form_data, author, news
 ):
-    form_data['text'] = 'Обновленный текст'
     response = reader_client.post(url_edit, data=form_data)
     assert response.status_code == HTTPStatus.NOT_FOUND
-    comment.refresh_from_db()
-    assert comment.text == comment.text
+    comment_from_db = Comment.objects.get()
+    assert comment_from_db.text == comment.text
+    assert comment_from_db.author == author
+    assert comment_from_db.news == news
