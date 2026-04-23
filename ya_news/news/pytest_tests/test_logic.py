@@ -1,12 +1,11 @@
 from http import HTTPStatus
 
 import pytest
-from pytest_django.asserts import assertFormError, assertRedirects
+from pytest_django.asserts import assertRedirects
 
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
 
-# Константы для тестов (вместо лишней фикстуры в conftest.py)
 COMMENT_TEXT = 'Текст комментария'
 NEW_COMMENT_TEXT = 'Обновленный текст комментария'
 FORM_DATA = {'text': COMMENT_TEXT}
@@ -39,7 +38,7 @@ def test_user_cant_use_bad_words(author_client, url_detail):
     bad_words_data = {'text': f'Текст, {BAD_WORDS[0]}, еще текст'}
     response = author_client.post(url_detail, data=bad_words_data)
     assert response.status_code == HTTPStatus.OK
-    assertFormError(response, 'form', 'text', WARNING)
+    assert WARNING in response.context['form'].errors['text']
     assert Comment.objects.count() == 0
 
 
