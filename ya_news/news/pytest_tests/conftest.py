@@ -134,4 +134,4 @@ def expected_delete_redirect_url(login_url, url_delete):
 
 @pytest.fixture
 def form_data():
-    return {'text': 'Новый текст комментария'}
+    return {'text': 'Текст комментария'}
