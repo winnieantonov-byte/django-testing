@@ -1,13 +1,55 @@
-from datetime import datetime, timedelta
+from http import HTTPStatus
 
 import pytest
-from django.conf import settings
 from django.test import Client
 from django.urls import reverse
-from django.utils import timezone
-
+from news.forms import BAD_WORDS
 from news.models import Comment, News
+from pytest_lazyfixture import lazy_fixture
 
+# --- Константы для параметризации ---
+
+CREATE_COMMENT_CASES = [
+    ('client', 0),
+    ('author_client', 1),
+]
+
+BAD_WORDS_CASES = [
+    {'text': f'Текст с {word}'} for word in BAD_WORDS
+]
+
+# Общие lazy_fixture для исключения дублирования
+CLIENT = lazy_fixture('client')
+AUTHOR_CLIENT = lazy_fixture('author_client')
+READER_CLIENT = lazy_fixture('reader_client')
+
+HOME_URL = lazy_fixture('home_url')
+LOGIN_URL = lazy_fixture('login_url')
+LOGOUT_URL = lazy_fixture('logout_url')
+SIGNUP_URL = lazy_fixture('signup_url')
+DETAIL_URL = lazy_fixture('url_detail')
+EDIT_URL = lazy_fixture('url_edit')
+DELETE_URL = lazy_fixture('url_delete')
+
+PAGES_AVAILABILITY_CASES = (
+    (HOME_URL, CLIENT, HTTPStatus.OK, 'get'),
+    (LOGIN_URL, CLIENT, HTTPStatus.OK, 'get'),
+    (LOGOUT_URL, CLIENT, HTTPStatus.OK, 'post'),
+    (SIGNUP_URL, CLIENT, HTTPStatus.OK, 'get'),
+    (DETAIL_URL, CLIENT, HTTPStatus.OK, 'get'),
+    (EDIT_URL, AUTHOR_CLIENT, HTTPStatus.OK, 'get'),
+    (EDIT_URL, READER_CLIENT, HTTPStatus.NOT_FOUND, 'get'),
+    (DELETE_URL, AUTHOR_CLIENT, HTTPStatus.OK, 'get'),
+    (DELETE_URL, READER_CLIENT, HTTPStatus.NOT_FOUND, 'get'),
+)
+
+REDIRECT_CASES = (
+    (EDIT_URL, HTTPStatus.FOUND, LOGIN_URL),
+    (DELETE_URL, HTTPStatus.FOUND, LOGIN_URL),
+)
+
+
+# --- Фикстуры ---
 
 @pytest.fixture(autouse=True)
 def enable_db_access(db):
@@ -60,19 +102,7 @@ def reader_client(reader):
 
 @pytest.fixture
 def news(db):
-    return News.objects.create(title='Тестовая новость', text='Просто текст.')
-
-
-@pytest.fixture
-def news_list(db):
-    News.objects.bulk_create(
-        News(
-            title=f'Новость {index}',
-            text='Просто текст.',
-            date=datetime.today() - timedelta(days=index)
-        )
-        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    )
+    return News.objects.create(title='Тестовая новость', text='Текст.')
 
 
 @pytest.fixture
@@ -82,27 +112,6 @@ def comment(news, author):
         author=author,
         text='Текст комментария'
     )
-
-
-@pytest.fixture
-def comments_list(news, author):
-    now = timezone.now()
-    comments = [
-        Comment(
-            news=news,
-            author=author,
-            text=f'Tекст {index}',
-        )
-        for index in range(10)
-    ]
-    Comment.objects.bulk_create(comments)
-    created_comments = (
-        Comment.objects.filter(news=news, author=author)
-        .order_by('id')[:10]
-    )
-    for index, comment in enumerate(created_comments):
-        comment.created = now + timedelta(days=index)
-    Comment.objects.bulk_update(created_comments, ['created'])
 
 
 @pytest.fixture
@@ -121,5 +130,5 @@ def url_delete(comment):
 
 
 @pytest.fixture
-def url_login():
-    return reverse('users:login')
+def form_data():
+    return {'text': 'Текст комментария'}

@@ -1,5 +1,5 @@
-from django.conf import settings
 from news.forms import CommentForm
+from django.conf import settings
 
 
 def test_news_count(client, news_list, home_url):
@@ -29,5 +29,7 @@ def test_anonymous_client_has_no_form(client, url_detail):
 
 
 def test_authorized_client_has_form(author_client, url_detail):
-    form = author_client.get(url_detail).context['form']
-    assert isinstance(form, CommentForm)
+    assert 'form' in author_client.get(url_detail).context
+    assert isinstance(
+        author_client.get(url_detail).context['form'], CommentForm
+    )
