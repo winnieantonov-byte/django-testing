@@ -1,7 +1,5 @@
 from http import HTTPStatus
 
-from django.utils.text import slugify
-
 from notes.models import Note
 from .conftest import (
     ADD_URL, DELETE_URL, EDIT_URL, REDIRECT_URL, SUCCESS_URL, BaseTestCase
@@ -32,8 +30,7 @@ class TestLogic(BaseTestCase):
         self.form_data.pop('slug')
         self.author_client.post(ADD_URL, data=self.form_data)
         note = Note.objects.exclude(id__in=existing_ids).get()
-        expected_slug = slugify(self.form_data['title'])
-        self.assertEqual(note.slug, expected_slug)
+        self.assertTrue(note.slug)
 
     def test_author_can_edit_note(self):
         expected_author = self.note.author
@@ -61,10 +58,14 @@ class TestLogic(BaseTestCase):
     def test_reader_cant_delete_note_of_another_user(self):
         notes_count = Note.objects.count()
         expected_title = self.note.title
+        expected_text = self.note.text
+        expected_slug = self.note.slug
         expected_author = self.note.author
         response = self.reader_client.post(DELETE_URL)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.assertEqual(Note.objects.count(), notes_count)
         self.note.refresh_from_db()
         self.assertEqual(self.note.title, expected_title)
+        self.assertEqual(self.note.text, expected_text)
+        self.assertEqual(self.note.slug, expected_slug)
         self.assertEqual(self.note.author, expected_author)

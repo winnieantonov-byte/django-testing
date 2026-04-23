@@ -33,6 +33,7 @@ def test_user_cant_use_bad_words(author_client, url_detail, form_data_bad):
     response = author_client.post(url_detail, data=form_data_bad)
     assert 'form' in response.context
     assert WARNING in response.context['form'].errors['text']
+    assert Comment.objects.count() == 0
 
 
 def test_author_can_delete_comment(author_client, url_delete):
