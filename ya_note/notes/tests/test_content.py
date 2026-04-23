@@ -8,7 +8,6 @@ class TestContent(BaseTestCase):
         response = self.author_client.get(self.LIST_URL)
         object_list = response.context['object_list']
         self.assertIn(self.note, object_list)
-
         note_obj = object_list.get(pk=self.note.pk)
         self.assertEqual(note_obj.title, self.note.title)
         self.assertEqual(note_obj.text, self.note.text)
