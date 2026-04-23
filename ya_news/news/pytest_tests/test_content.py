@@ -2,13 +2,13 @@ from news.forms import CommentForm
 from django.conf import settings
 
 
-def test_news_count(client, news_list, home_url):
+def test_news_count(client, home_url):
     response = client.get(home_url)
     news_count = len(response.context['object_list'])
     assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-def test_news_order(client, news_list, home_url):
+def test_news_order(client, home_url):
     news_dates = [
         news.date
         for news in client.get(home_url).context['object_list']
@@ -16,7 +16,7 @@ def test_news_order(client, news_list, home_url):
     assert news_dates == sorted(news_dates, reverse=True)
 
 
-def test_comments_order(client, url_detail, comments_list):
+def test_comments_order(client, url_detail):
     timestamps = [
         c.created
         for c in client.get(url_detail).context['news'].comment_set.all()
