@@ -32,7 +32,6 @@ class TestLogic(BaseTestCase):
         self.form_data['slug'] = self.note.slug
         response = self.author_client.post(self.ADD_URL, data=self.form_data)
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        # Замена assertFormError на прямую проверку ошибок в контексте
         form = response.context['form']
         self.assertIn('slug', form.errors)
         self.assertEqual(form.errors['slug'][0], self.note.slug + WARNING)

@@ -21,7 +21,7 @@ BAD_WORDS_CASES = [
     {'text': f'Текст с {word}'} for word in BAD_WORDS
 ]
 
-# Общие lazy_fixture для исключения дублирования в test_routes
+
 CLIENT = lazy_fixture('client')
 AUTHOR_CLIENT = lazy_fixture('author_client')
 READER_CLIENT = lazy_fixture('reader_client')
