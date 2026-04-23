@@ -46,10 +46,12 @@ def test_reader_cant_delete_comment_of_author(reader_client, url_delete):
 
 
 def test_author_can_edit_comment(author_client, url_edit, comment, form_data):
-    form_data['text'] = 'Обновленный текст'
+    new_text = 'Обновленный текст'
+    form_data['text'] = new_text
     response = author_client.post(url_edit, data=form_data)
     assert response.status_code == HTTPStatus.FOUND
-    assert comment.text == form_data['text']
+    comment.refresh_from_db()
+    assert comment.text == new_text
 
 
 def test_reader_cant_edit_comment_of_author(
