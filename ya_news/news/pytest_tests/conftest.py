@@ -1,11 +1,14 @@
+from datetime import datetime, timedelta
 from http import HTTPStatus
 
 import pytest
+from django.conf import settings
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
+from pytest_lazyfixture import lazy_fixture
 from news.forms import BAD_WORDS
 from news.models import Comment, News
-from pytest_lazyfixture import lazy_fixture
 
 # --- Константы для параметризации ---
 
@@ -18,7 +21,7 @@ BAD_WORDS_CASES = [
     {'text': f'Текст с {word}'} for word in BAD_WORDS
 ]
 
-# Общие lazy_fixture для исключения дублирования
+# Общие lazy_fixture для исключения дублирования в test_routes
 CLIENT = lazy_fixture('client')
 AUTHOR_CLIENT = lazy_fixture('author_client')
 READER_CLIENT = lazy_fixture('reader_client')
@@ -48,32 +51,40 @@ REDIRECT_CASES = (
     (DELETE_URL, HTTPStatus.FOUND, LOGIN_URL),
 )
 
+# --- Фикстуры для создания данных ---
 
-# --- Фикстуры ---
+
+@pytest.fixture
+def news_list(db):
+    today = datetime.today()
+    News.objects.bulk_create(
+        News(
+            title=f'Новость {index}',
+            text='Текст.',
+            date=today - timedelta(days=index)
+        )
+        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
+    )
+
+
+@pytest.fixture
+def comments_list(news, author):
+    now = timezone.now()
+    for index in range(10):
+        comment = Comment.objects.create(
+            news=news,
+            author=author,
+            text=f'Текст {index}',
+        )
+        comment.created = now + timedelta(days=index)
+        comment.save()
+
+# --- Фикстуры пользователей и клиентов ---
+
 
 @pytest.fixture(autouse=True)
 def enable_db_access(db):
     pass
-
-
-@pytest.fixture
-def home_url():
-    return reverse('news:home')
-
-
-@pytest.fixture
-def login_url():
-    return reverse('users:login')
-
-
-@pytest.fixture
-def logout_url():
-    return reverse('users:logout')
-
-
-@pytest.fixture
-def signup_url():
-    return reverse('users:signup')
 
 
 @pytest.fixture
@@ -99,6 +110,8 @@ def reader_client(reader):
     client.force_login(reader)
     return client
 
+# --- Фикстуры объектов ---
+
 
 @pytest.fixture
 def news(db):
@@ -112,6 +125,28 @@ def comment(news, author):
         author=author,
         text='Текст комментария'
     )
+
+# --- Фикстуры URL-адресов ---
+
+
+@pytest.fixture
+def home_url():
+    return reverse('news:home')
+
+
+@pytest.fixture
+def login_url():
+    return reverse('users:login')
+
+
+@pytest.fixture
+def logout_url():
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def signup_url():
+    return reverse('users:signup')
 
 
 @pytest.fixture
