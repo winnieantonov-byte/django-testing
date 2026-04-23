@@ -7,7 +7,6 @@ from notes.models import Note
 User = get_user_model()
 
 # --- Константы URL ---
-
 LOGIN_URL = reverse('users:login')
 LIST_URL = reverse('notes:list')
 ADD_URL = reverse('notes:add')
@@ -17,20 +16,16 @@ NOTE_SLUG = 'note-slug'
 EDIT_URL = reverse('notes:edit', args=(NOTE_SLUG,))
 DELETE_URL = reverse('notes:delete', args=(NOTE_SLUG,))
 DETAIL_URL = reverse('notes:detail', args=(NOTE_SLUG,))
-REDIRECT_URL = f'{LOGIN_URL}?next={ADD_URL}'
 
-ANON_REDIRECT_CASES = (
-    (LIST_URL, f'{LOGIN_URL}?next={LIST_URL}'),
-    (ADD_URL, REDIRECT_URL),
-    (SUCCESS_URL, f'{LOGIN_URL}?next={SUCCESS_URL}'),
-    (EDIT_URL, f'{LOGIN_URL}?next={EDIT_URL}'),
-    (DELETE_URL, f'{LOGIN_URL}?next={DELETE_URL}'),
-    (DETAIL_URL, f'{LOGIN_URL}?next={DETAIL_URL}'),
-)
+LIST_REDIRECT = f'{LOGIN_URL}?next={LIST_URL}'
+ADD_REDIRECT = f'{LOGIN_URL}?next={ADD_URL}'
+SUCCESS_REDIRECT = f'{LOGIN_URL}?next={SUCCESS_URL}'
+EDIT_REDIRECT = f'{LOGIN_URL}?next={EDIT_URL}'
+DELETE_REDIRECT = f'{LOGIN_URL}?next={DELETE_URL}'
+DETAIL_REDIRECT = f'{LOGIN_URL}?next={DETAIL_URL}'
 
 
 class BaseTestCase(TestCase):
-
     @classmethod
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор')
@@ -45,7 +40,6 @@ class BaseTestCase(TestCase):
             slug=NOTE_SLUG,
             author=cls.author
         )
-
         cls.form_data = {
             'title': 'Новый заголовок',
             'text': 'Новый текст',

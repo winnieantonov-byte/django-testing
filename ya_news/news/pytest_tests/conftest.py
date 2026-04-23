@@ -129,8 +129,3 @@ def expected_edit_redirect_url(login_url, url_edit):
 @pytest.fixture
 def expected_delete_redirect_url(login_url, url_delete):
     return f'{login_url}?next={url_delete}'
-
-
-@pytest.fixture
-def form_data():
-    return {'text': 'Текст комментария'}
