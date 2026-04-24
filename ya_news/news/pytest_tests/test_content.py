@@ -13,16 +13,18 @@ def test_news_count(client, home_url, news_list):
 
 @pytest.mark.django_db
 def test_news_order(client, home_url):
-    object_list = client.get(home_url).context['object_list']
-    all_dates = [news.date for news in object_list]
-    sorted_dates = sorted(all_dates, reverse=True)
-    assert all_dates == sorted_dates
+    dates = [
+        news.pub_date for news in client.get(home_url).context['news_list']
+    ]
+    assert dates == sorted(dates, reverse=True)
 
 
 @pytest.mark.django_db
-def test_comments_order(client, url_detail):
-    all_comments = client.get(url_detail).context['news'].comment_set.all()
-    timestamps = [c.created for c in all_comments]
+def test_comments_order(client, news, comment_factory, url_detail):
+    comment_factory.create_batch(5, news=news)
+    comments = client.get(url_detail).context['news'].comment_set.all()
+    timestamps = [c.created for c in comments]
+    assert len(timestamps) > 0
     assert timestamps == sorted(timestamps)
 
 

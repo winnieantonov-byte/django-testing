@@ -39,8 +39,8 @@ DELETE_REDIRECT = lazy_fixture('expected_delete_redirect_url')
 def test_pages_availability(
     url, parametrized_client, expected_status, method
 ):
-    response = getattr(parametrized_client, method)(url)
-    assert response.status_code == expected_status
+    assert getattr(
+        parametrized_client, method)(url).status_code == expected_status
 
 
 @pytest.mark.parametrize(

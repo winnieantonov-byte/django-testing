@@ -80,7 +80,7 @@ def comment(news, author):
     return Comment.objects.create(
         news=news,
         author=author,
-        text='Текст комментария'
+        text='Комментарий'
     )
 
 # --- Фикстуры URL-адресов ---
@@ -134,3 +134,8 @@ def expected_delete_redirect_url(login_url, url_delete):
 @pytest.fixture
 def url_detail_to_comments(url_detail):
     return f'{url_detail}#comments'
+
+
+@pytest.fixture
+def bad_words_data(bad_word):
+    return {'text': f'Текст, {bad_word}, еще текст'}
