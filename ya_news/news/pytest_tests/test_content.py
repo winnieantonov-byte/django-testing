@@ -5,7 +5,7 @@ from news.forms import CommentForm
 
 
 @pytest.mark.django_db
-def test_news_count(client, home_url, news_list): 
+def test_news_count(client, home_url, news_list):
     assert len(
         client.get(home_url).context['object_list']
     ) == settings.NEWS_COUNT_ON_HOME_PAGE
