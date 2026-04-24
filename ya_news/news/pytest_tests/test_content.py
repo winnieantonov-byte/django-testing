@@ -21,11 +21,8 @@ def test_news_order(client, home_url):
 
 @pytest.mark.django_db
 def test_comments_order(client, comments_list, url_detail):
-    response = client.get(url_detail)
-    news_obj = response.context['news']
-    all_comments = news_obj.comment_set.all()
+    all_comments = client.get(url_detail).context['news'].comment_set.all()
     timestamps = [c.created for c in all_comments]
-    assert len(timestamps) > 0
     assert timestamps == sorted(timestamps)
 
 

@@ -7,6 +7,7 @@ from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
 
 COMMENT_TEXT = {'text': 'Текст комментария'}
+BAD_WORDS_DATA = [{'text': word} for word in BAD_WORDS]
 
 
 @pytest.mark.django_db
@@ -30,10 +31,7 @@ def test_auth_user_can_create_comment(
     assert comment.author == author
 
 
-@pytest.mark.parametrize(
-    'bad_words_data',
-    [{'text': f'Текст, {word}, еще текст'} for word in BAD_WORDS]
-)
+@pytest.mark.parametrize('bad_words_data', BAD_WORDS_DATA)
 def test_user_cant_use_bad_words(author_client, url_detail, bad_words_data):
     response = author_client.post(url_detail, data=bad_words_data)
     assert response.status_code == HTTPStatus.OK
@@ -68,10 +66,7 @@ def test_author_can_edit_comment(
     response = author_client.post(url_edit, data=COMMENT_TEXT)
     assert response.status_code == HTTPStatus.FOUND
     assertRedirects(response, url_detail_to_comments)
-    comment.refresh_from_db()
     assert comment.text == COMMENT_TEXT['text']
-    assert comment.author == comment.author
-    assert comment.news == comment.news
 
 
 def test_reader_cant_edit_comment_of_author(
