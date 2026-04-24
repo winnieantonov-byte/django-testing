@@ -137,5 +137,5 @@ def url_detail_to_comments(url_detail):
 
 
 @pytest.fixture
-def bad_words_data(bad_word):
-    return {'text': f'Текст, {bad_word}, еще текст'}
+def bad_words_data(request):
+    return {'text': f'Текст, {request.param}, еще текст'}

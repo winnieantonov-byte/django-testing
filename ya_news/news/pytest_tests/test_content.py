@@ -20,8 +20,8 @@ def test_news_order(client, home_url):
 
 
 @pytest.mark.django_db
-def test_comments_order(client, news, comment_factory, url_detail):
-    comment_factory.create_batch(5, news=news)
+def test_comments_order(client, news, comments_list, url_detail):
+    comments_list.create_batch(5, news=news)
     comments = client.get(url_detail).context['news'].comment_set.all()
     timestamps = [c.created for c in comments]
     assert len(timestamps) > 0
