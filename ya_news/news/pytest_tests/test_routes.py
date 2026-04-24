@@ -32,6 +32,8 @@ DELETE_REDIRECT = lazy_fixture('expected_delete_redirect_url')
         (EDIT_URL, READER_CLIENT, HTTPStatus.NOT_FOUND, 'get'),
         (DELETE_URL, AUTHOR_CLIENT, HTTPStatus.OK, 'get'),
         (DELETE_URL, READER_CLIENT, HTTPStatus.NOT_FOUND, 'get'),
+        (EDIT_URL, CLIENT, HTTPStatus.FOUND, 'get'),
+        (DELETE_URL, CLIENT, HTTPStatus.FOUND, 'get'),
     ),
 )
 def test_pages_availability(

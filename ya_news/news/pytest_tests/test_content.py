@@ -5,7 +5,7 @@ from news.forms import CommentForm
 
 
 @pytest.mark.django_db
-def test_news_count(client, home_url, news_list):
+def test_news_count(client, home_url):
     assert len(
         client.get(home_url).context['object_list']
     ) == settings.NEWS_COUNT_ON_HOME_PAGE
@@ -13,18 +13,16 @@ def test_news_count(client, home_url, news_list):
 
 @pytest.mark.django_db
 def test_news_order(client, home_url):
-    news_dates = [
-        news.date for news in client.get(home_url).context['object_list']
-    ]
-    assert news_dates == sorted(news_dates, reverse=True)
+    object_list = client.get(home_url).context['object_list']
+    all_dates = [news.date for news in object_list]
+    sorted_dates = sorted(all_dates, reverse=True)
+    assert all_dates == sorted_dates
 
 
 @pytest.mark.django_db
 def test_comments_order(client, url_detail):
-    news = client.get(url_detail).context['news']
-    timestamps = [
-        c.created for c in news.comment_set.all()
-    ]
+    all_comments = client.get(url_detail).context['news'].comment_set.all()
+    timestamps = [c.created for c in all_comments]
     assert timestamps == sorted(timestamps)
 
 
