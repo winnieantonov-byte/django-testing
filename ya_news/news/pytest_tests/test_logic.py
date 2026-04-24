@@ -3,7 +3,7 @@ from http import HTTPStatus
 import pytest
 from pytest_django.asserts import assertRedirects
 
-from news.forms import WARNING
+from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
 
 COMMENT_TEXT = {'text': 'Текст комментария'}
@@ -30,6 +30,10 @@ def test_auth_user_can_create_comment(
     assert comment.author == author
 
 
+@pytest.mark.parametrize(
+    'bad_words_data',
+    [{'text': f'Текст, {word}, еще текст'} for word in BAD_WORDS]
+)
 def test_user_cant_use_bad_words(author_client, url_detail, bad_words_data):
     response = author_client.post(url_detail, data=bad_words_data)
     assert response.status_code == HTTPStatus.OK

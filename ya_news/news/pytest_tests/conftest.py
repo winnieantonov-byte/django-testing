@@ -134,8 +134,3 @@ def expected_delete_redirect_url(login_url, url_delete):
 @pytest.fixture
 def url_detail_to_comments(url_detail):
     return f'{url_detail}#comments'
-
-
-@pytest.fixture
-def bad_words_data(request):
-    return {'text': f'Текст, {request.param}, еще текст'}
