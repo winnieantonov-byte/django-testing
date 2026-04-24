@@ -6,9 +6,8 @@ from news.forms import CommentForm
 
 @pytest.mark.django_db
 def test_news_count(client, home_url):
-    response = client.get(home_url)
-    object_list = response.context['object_list']
-    assert len(object_list) == settings.NEWS_COUNT_ON_HOME_PAGE
+    news_count = len(client.get(home_url).context['object_list'])
+    assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
 @pytest.mark.django_db
