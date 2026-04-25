@@ -29,6 +29,13 @@ class TestLogic(BaseTestCase):
         notes_ids_after = set(Note.objects.values_list('id', flat=True))
         self.assertSetEqual(notes_ids_before, notes_ids_after)
 
+    def test_not_unique_slug(self):
+        self.form_data['slug'] = self.note.slug
+        notes_count_before = Note.objects.count()
+        response = self.author_client.post(ADD_URL, data=self.form_data)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(Note.objects.count(), notes_count_before)
+
     def test_empty_slug_is_filled_by_slugify(self):
         existing_pks = set(Note.objects.values_list('pk', flat=True))
         self.form_data.pop('slug')
@@ -71,6 +78,7 @@ class TestLogic(BaseTestCase):
         response = self.reader_client.post(DELETE_URL)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.assertEqual(Note.objects.count(), notes_count_before)
+        self.assertTrue(Note.objects.filter(pk=self.note.pk).exists())
         note_from_db = Note.objects.get(pk=self.note.pk)
         self.assertEqual(note_from_db.title, self.note.title)
         self.assertEqual(note_from_db.text, self.note.text)
