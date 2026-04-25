@@ -66,6 +66,7 @@ def test_author_can_edit_comment(
     response = author_client.post(url_edit, data=BAD_WORDS_DATA)
     assert response.status_code == HTTPStatus.FOUND
     assertRedirects(response, url_detail_to_comments)
+    comment.refresh_from_db()
     assert comment.text == BAD_WORDS_DATA
 
 
