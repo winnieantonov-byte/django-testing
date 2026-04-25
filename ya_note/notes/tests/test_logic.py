@@ -23,14 +23,11 @@ class TestLogic(BaseTestCase):
         self.assertEqual(note.author, self.author)
 
     def test_anonymous_user_cant_create_note(self):
-        note_before = Note.objects.get(pk=self.note.pk)
+        notes_before = list(Note.objects.values_list('id', flat=True))
         response = self.client.post(ADD_URL, data=self.form_data)
         self.assertRedirects(response, ADD_REDIRECT)
-        self.assertEqual(Note.objects.count(), 1)
-        note_after = Note.objects.get(pk=self.note.pk)
-        self.assertEqual(note_before.title, note_after.title)
-        self.assertEqual(note_before.text, note_after.text)
-        self.assertEqual(note_before.slug, note_after.slug)
+        notes_after = list(Note.objects.values_list('id', flat=True))
+        self.assertListEqual(notes_before, notes_after)
 
     def test_empty_slug_is_filled_by_slugify(self):
         existing_pks = set(Note.objects.values_list('pk', flat=True))
@@ -45,14 +42,13 @@ class TestLogic(BaseTestCase):
         self.assertEqual(note.author, self.author)
 
     def test_author_can_edit_note(self):
-        author_before = self.note.author
         response = self.author_client.post(EDIT_URL, data=self.form_data)
         self.assertRedirects(response, SUCCESS_URL)
-        self.note.refresh_from_db()
-        self.assertEqual(self.note.title, self.form_data['title'])
-        self.assertEqual(self.note.text, self.form_data['text'])
-        self.assertEqual(self.note.slug, self.form_data['slug'])
-        self.assertEqual(self.note.author, author_before)
+        updated_note = Note.objects.get(pk=self.note.pk)
+        self.assertEqual(updated_note.title, self.form_data['title'])
+        self.assertEqual(updated_note.text, self.form_data['text'])
+        self.assertEqual(updated_note.slug, self.form_data['slug'])
+        self.assertEqual(updated_note.author, self.author)
 
     def test_reader_cant_edit_note_of_another_user(self):
         response = self.reader_client.post(EDIT_URL, data=self.form_data)
@@ -70,9 +66,10 @@ class TestLogic(BaseTestCase):
         self.assertFalse(Note.objects.filter(pk=self.note.pk).exists())
 
     def test_reader_cant_delete_note_of_another_user(self):
-        notes_count_before = Note.objects.count()
         response = self.reader_client.post(DELETE_URL)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.assertEqual(Note.objects.count(), notes_count_before)
-        self.note.refresh_from_db()
-        self.assertEqual(self.note.title, self.note.title)
+        note_from_db = Note.objects.get(pk=self.note.pk)
+        self.assertEqual(note_from_db.title, self.note.title)
+        self.assertEqual(note_from_db.text, self.note.text)
+        self.assertEqual(note_from_db.slug, self.note.slug)
+        self.assertEqual(note_from_db.author, self.note.author)

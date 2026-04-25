@@ -63,9 +63,10 @@ def test_reader_cant_delete_comment_of_author(
 def test_author_can_edit_comment(
     author_client, comment, url_edit, url_detail_to_comments
 ):
-    response = author_client.post(url_edit, data=COMMENT_TEXT)
+    response = author_client.post(url_edit, data=BAD_WORDS_DATA)
     assert response.status_code == HTTPStatus.FOUND
     assertRedirects(response, url_detail_to_comments)
+    assert comment.text == BAD_WORDS_DATA
 
 
 def test_reader_cant_edit_comment_of_author(
